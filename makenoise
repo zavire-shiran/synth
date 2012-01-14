@@ -1,0 +1,3 @@
+#! /bin/sh
+
+./music | play -t s32 -B -r 44.1k -
