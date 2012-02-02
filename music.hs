@@ -15,7 +15,7 @@ defaultSigAttr = SignalAttributes 44100
 
 main :: IO ()
 main =
-  BS.putStr $ serializeSignal $ renderInstrument defaultSigAttr approxSquareInstr [[0, 1, 57], [1, 1, 64], [2, 1, 69]]
+  BS.putStr $ serializeSignal $ renderInstrument defaultSigAttr approxSquareInstr [[0, 1, 57], [1, 1, 59], [2, 1, 61], [3,1,62],[4,1,64],[5,1,66],[6,1,68],[7,1,69],[8, 2, 57], [8, 2, 61], [8,2,64], [8,2,69]]
 
 data SignalAttributes = SignalAttributes {
   sampleRate :: Float
