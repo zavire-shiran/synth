@@ -2,8 +2,10 @@ module Main where
 import Data.Int
 import qualified Data.Binary as Binary
 import qualified Data.ByteString.Lazy as BS
+import Data.List (transpose)
 
 type Signal = [Float]
+type Instrument = SignalAttributes -> [Float] -> Signal
 
 nullSignal :: Signal
 nullSignal = repeat 0
@@ -12,9 +14,8 @@ defaultSigAttr :: SignalAttributes
 defaultSigAttr = SignalAttributes 44100
 
 main :: IO ()
-main = let signal1 = allHarmonicsWave defaultSigAttr 1.0 220
-           signal2 = allHarmonicsWave defaultSigAttr 1.0 $ pitchToFrequency 69 in
-  BS.putStr $ serializeSignal $ appendSignals signal1 signal2
+main =
+  BS.putStr $ serializeSignal $ renderInstrument defaultSigAttr approxSquareInstr [[0, 1, 57], [1, 1, 64], [2, 1, 69]]
 
 data SignalAttributes = SignalAttributes {
   sampleRate :: Float
@@ -68,6 +69,13 @@ allHarmonicsWave sa length freq = sineInstr sa length $ map (\h -> (h * freq, 1/
 approxSquareWave :: SignalAttributes -> Float -> Float -> Signal
 approxSquareWave sa length freq = sineInstr sa length $ map (\h -> (h * freq, 1/h)) [1, 3..19]
 
-approxSquareInstr :: SignalAttributes -> [Float] -> Signal
-approxSquareInstr sa [l, f] = approxSquareWave sa l f
+approxSquareInstr :: Instrument
+approxSquareInstr sa [d, l, f] = delay sa d $ approxSquareWave sa l $ pitchToFrequency f
 
+delay :: SignalAttributes -> Float -> Signal -> Signal
+delay sa@(SignalAttributes sr) d = appendSignals (take (truncate (sr * d)) nullSignal)
+
+renderInstrument :: SignalAttributes -> Instrument -> [[Float]] -> Signal
+renderInstrument sa instr arguments =
+  let notes = map (instr sa) arguments in
+    map sum $ transpose notes
