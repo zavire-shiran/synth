@@ -3,6 +3,8 @@ import Data.Int
 import qualified Data.Binary as Binary
 import qualified Data.ByteString.Lazy as BS
 import Data.List (transpose)
+import qualified Data.Text as T
+import System.IO (readFile)
 
 type Signal = [Float]
 type Instrument = SignalAttributes -> [Float] -> Signal
@@ -15,7 +17,7 @@ defaultSigAttr = SignalAttributes 44100
 
 main :: IO ()
 main =
-  BS.putStr $ serializeSignal $ renderInstrument defaultSigAttr approxSquareInstr [[0, 1, 57], [1, 1, 59], [2, 1, 61], [3,1,62],[4,1,64],[5,1,66],[6,1,68],[7,1,69],[8, 2, 57], [8, 2, 61], [8,2,64], [8,2,69]]
+ readSection "sequence" >>= BS.putStr . serializeSignal . renderInstrument defaultSigAttr approxSquareInstr
 
 data SignalAttributes = SignalAttributes {
   sampleRate :: Float
@@ -79,3 +81,6 @@ renderInstrument :: SignalAttributes -> Instrument -> [[Float]] -> Signal
 renderInstrument sa instr arguments =
   let notes = map (instr sa) arguments in
     map sum $ transpose notes
+
+readSection :: String -> IO [[Float]]
+readSection fileName = readFile fileName >>= return . filter (not . null) . map (map read) . map words . lines
