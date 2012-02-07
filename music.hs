@@ -3,6 +3,7 @@ import Data.Int
 import qualified Data.Binary as Binary
 import qualified Data.ByteString.Lazy as BS
 import Data.List (transpose)
+import Data.Maybe
 import qualified Data.Text as T
 import System.IO (readFile)
 
@@ -17,11 +18,14 @@ defaultSigAttr = SignalAttributes 44100
 
 main :: IO ()
 main =
- readSection "sequence" >>= BS.putStr . serializeSignal . renderInstrument defaultSigAttr approxSquareInstr
+ readComposition "composition" >>= BS.putStr . serializeSignal . renderComposition defaultSigAttr
 
 data SignalAttributes = SignalAttributes {
   sampleRate :: Float
 }
+
+type Composition = [Sequence]
+data Sequence = Sequence Instrument [[Float]] Float
 
 genCompositeSineWave :: SignalAttributes -> [(Float, Float)] -> Signal
 genCompositeSineWave sa wavedef = foldl addSignals nullSignal $ map makeSine_ wavedef
@@ -84,3 +88,18 @@ renderInstrument sa instr arguments =
 
 readSection :: String -> IO [[Float]]
 readSection fileName = readFile fileName >>= return . filter (not . null) . map (map read) . map words . lines
+
+instrumentTable :: [(String, Instrument)]
+instrumentTable = [("approxSquare", approxSquareInstr)]
+
+makeSequence :: [String] -> IO Sequence
+makeSequence [name, instr, delay] = readSection name >>= \section -> return $ Sequence (fromJust $ lookup instr instrumentTable) section (read delay)
+
+readComposition :: String -> IO Composition
+readComposition filename = readFile filename >>= sequence . map makeSequence . map words . lines
+
+renderSequence :: SignalAttributes -> Sequence -> Signal
+renderSequence sa (Sequence instr arguments d) = delay sa d $ renderInstrument sa instr arguments
+
+renderComposition :: SignalAttributes -> Composition -> Signal
+renderComposition sa = map sum . transpose . map (renderSequence sa)
