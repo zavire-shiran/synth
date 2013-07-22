@@ -7,8 +7,14 @@ import Data.Maybe
 import qualified Data.Text as T
 import System.IO (readFile)
 
+-- Stolen shamelessly from some hackage library
+join :: String -> [String] -> String
+join _ [] = ""
+join _ [a] = a
+join sep (x:xs) = x ++ sep ++ join sep xs
+
 type Signal = [Float]
-type Instrument = SignalAttributes -> [Float] -> Signal
+type Instrument = SignalAttributes -> [[String]] -> Signal
 
 nullSignal :: Signal
 nullSignal = repeat 0
@@ -17,15 +23,16 @@ defaultSigAttr :: SignalAttributes
 defaultSigAttr = SignalAttributes 44100
 
 main :: IO ()
-main =
- readComposition "composition" >>= BS.putStr . serializeSignal . renderComposition defaultSigAttr
+main = let s1 = approxSquareWave defaultSigAttr 1.0 (pitchToFrequency 60)
+           s2 = approxSquareWave defaultSigAttr 1.0 (pitchToFrequency 62) in
+          BS.putStr . serializeSignal $ (appendSignals s1 s2)
 
 data SignalAttributes = SignalAttributes {
   sampleRate :: Float
 }
 
 type Composition = [Sequence]
-data Sequence = Sequence Instrument [[Float]] Float
+data Sequence = Sequence Instrument [[String]] Float
 
 genCompositeSineWave :: SignalAttributes -> [(Float, Float)] -> Signal
 genCompositeSineWave sa wavedef = foldl addSignals nullSignal $ map makeSine_ wavedef
@@ -55,7 +62,7 @@ multiplySignals one two = zipWith (*) one two
 appendSignals :: Signal -> Signal -> Signal
 appendSignals = (++)
 
-serializeSignal :: [Float] -> BS.ByteString
+serializeSignal :: Signal -> BS.ByteString
 serializeSignal signal = BS.concat $ map (Binary.encode . (truncate :: Float -> Int32) . (*1.5e8)) signal
 
 makeTuples :: [a] -> [(a,a)]
@@ -75,31 +82,5 @@ allHarmonicsWave sa length freq = sineInstr sa length $ map (\h -> (h * freq, 1/
 approxSquareWave :: SignalAttributes -> Float -> Float -> Signal
 approxSquareWave sa length freq = sineInstr sa length $ map (\h -> (h * freq, 1/h)) [1, 3..19]
 
-approxSquareInstr :: Instrument
-approxSquareInstr sa [d, l, f] = delay sa d $ approxSquareWave sa l $ pitchToFrequency f
-
-delay :: SignalAttributes -> Float -> Signal -> Signal
-delay sa@(SignalAttributes sr) d = appendSignals (take (truncate (sr * d)) nullSignal)
-
-renderInstrument :: SignalAttributes -> Instrument -> [[Float]] -> Signal
-renderInstrument sa instr arguments =
-  let notes = map (instr sa) arguments in
-    map sum $ transpose notes
-
-readSection :: String -> IO [[Float]]
-readSection fileName = readFile fileName >>= return . filter (not . null) . map (map read) . map words . lines
-
-instrumentTable :: [(String, Instrument)]
-instrumentTable = [("approxSquare", approxSquareInstr)]
-
-makeSequence :: [String] -> IO Sequence
-makeSequence [name, instr, delay] = readSection name >>= \section -> return $ Sequence (fromJust $ lookup instr instrumentTable) section (read delay)
-
-readComposition :: String -> IO Composition
-readComposition filename = readFile filename >>= sequence . map makeSequence . map words . lines
-
-renderSequence :: SignalAttributes -> Sequence -> Signal
-renderSequence sa (Sequence instr arguments d) = delay sa d $ renderInstrument sa instr arguments
-
-renderComposition :: SignalAttributes -> Composition -> Signal
-renderComposition sa = map sum . transpose . map (renderSequence sa)
+--instrumentTable :: [(String, Instrument)]
+--instrumentTable = [("approxSquare", approxSquareInstr)]
