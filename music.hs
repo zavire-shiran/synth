@@ -23,16 +23,20 @@ defaultSigAttr :: SignalAttributes
 defaultSigAttr = SignalAttributes 44100
 
 main :: IO ()
-main = let s1 = approxSquareWave defaultSigAttr 1.0 (pitchToFrequency 60)
-           s2 = approxSquareWave defaultSigAttr 1.0 (pitchToFrequency 62) in
-          BS.putStr . serializeSignal $ (appendSignals s1 s2)
+--main = let s1 = allHarmonicsWave defaultSigAttr 1.0 (pitchToFrequency 60)
+--           s2 = allHarmonicsWave defaultSigAttr 1.0 (pitchToFrequency 64)
+--           s3 = allHarmonicsWave defaultSigAttr 1.0 (pitchToFrequency 67) in
+--          BS.putStr . serializeSignal $ sumSignals [s1, s2, s3]
+
+--main = BS.putStr . serializeSignal $ sineWave defaultSigAttr 1.0 (pitchToFrequency 80)
+
+main = readComposition "composition" >>= print 
 
 data SignalAttributes = SignalAttributes {
   sampleRate :: Float
 }
 
 type Composition = [Sequence]
-data Sequence = Sequence Instrument [[String]] Float
 
 genCompositeSineWave :: SignalAttributes -> [(Float, Float)] -> Signal
 genCompositeSineWave sa wavedef = foldl addSignals nullSignal $ map makeSine_ wavedef
@@ -55,6 +59,9 @@ gain g s = map (*g) s
 
 addSignals :: Signal -> Signal -> Signal
 addSignals one two = zipWith (+) one two
+
+sumSignals :: [Signal] -> Signal
+sumSignals = foldl addSignals nullSignal
 
 multiplySignals :: Signal -> Signal -> Signal
 multiplySignals one two = zipWith (*) one two
@@ -82,5 +89,34 @@ allHarmonicsWave sa length freq = sineInstr sa length $ map (\h -> (h * freq, 1/
 approxSquareWave :: SignalAttributes -> Float -> Float -> Signal
 approxSquareWave sa length freq = sineInstr sa length $ map (\h -> (h * freq, 1/h)) [1, 3..19]
 
+sineWave :: SignalAttributes -> Float -> Float -> Signal
+sineWave sa length freq = sineInstr sa length [(freq, 10)]
+
 --instrumentTable :: [(String, Instrument)]
 --instrumentTable = [("approxSquare", approxSquareInstr)]
+
+-- Sequences are series of events that are passed to a specific instrument
+-- Events are one per line, no multiline events or multiples on one line
+-- Compositions are a bunch of sequences with time offsets of each other
+-- Each sequence of a composition is generated independently so that randomness gets redone
+
+renderComposition :: Composition -> Signal
+renderComposition composition = []
+
+data Sequence = Sequence {
+  instrument :: String,
+  events :: [String],
+  start :: Float
+} deriving (Show)
+
+readComposition :: String -> IO [Sequence]
+readComposition filename = readFile filename >>= return . lines >>= readSequences
+
+readSequences :: [String] -> IO [Sequence]
+readSequences sequences = sequence $ map readSequence sequences
+
+readSequence :: String -> IO Sequence
+readSequence sequenceSpec = let specelems = words sequenceSpec
+                                sequenceFile = specelems !! 0
+                                start = specelems !! 1 in
+                              readFile sequenceFile >>= return . lines >>= \ l -> return (Sequence (head l) (tail l) (read start))
