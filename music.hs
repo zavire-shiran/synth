@@ -92,6 +92,9 @@ approxSquareWave sa length freq = sineInstr sa length $ map (\h -> (h * freq, 1/
 sineWave :: SignalAttributes -> Float -> Float -> Signal
 sineWave sa length freq = sineInstr sa length [(freq, 10)]
 
+approxSquareInstr :: SignalAttributes -> [String] -> Signal
+approxSquareInstr sa events = []
+
 --instrumentTable :: [(String, Instrument)]
 --instrumentTable = [("approxSquare", approxSquareInstr)]
 
@@ -100,8 +103,8 @@ sineWave sa length freq = sineInstr sa length [(freq, 10)]
 -- Compositions are a bunch of sequences with time offsets of each other
 -- Each sequence of a composition is generated independently so that randomness gets redone
 
-renderComposition :: Composition -> Signal
-renderComposition composition = []
+renderComposition :: SignalAttributes -> Composition -> Signal
+renderComposition sa composition = []
 
 data Sequence = Sequence {
   instrument :: String,
