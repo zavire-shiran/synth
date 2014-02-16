@@ -6,12 +6,7 @@ import Data.List (transpose)
 import Data.Maybe
 import qualified Data.Text as T
 import System.IO (readFile)
-
--- Stolen shamelessly from some hackage library
-join :: String -> [String] -> String
-join _ [] = ""
-join _ [a] = a
-join sep (x:xs) = x ++ sep ++ join sep xs
+import System.Random
 
 type Signal = [Float]
 type Instrument = SignalAttributes -> [[String]] -> Signal
@@ -28,7 +23,9 @@ main :: IO ()
 --           s3 = approxTriangleWave defaultSigAttr 1.0 (pitchToFrequency 67) in
 --         BS.putStr . serializeSignal $ gain 4 $ sumSignals [s1, s2, s3]
 
-main = BS.putStr . serializeSignal $ applyEnvelope defaultSigAttr 1.0 0.01 0.01 $ gain 3 $ genTriangleWave defaultSigAttr (addSignals (repeat $ pitchToFrequency 48) (gain 100 $ genSineWave defaultSigAttr (repeat $ pitchToFrequency 90)))
+main = BS.putStr . serializeSignal $ applyEnvelope defaultSigAttr 1.0 0.01 0.01 $ gain 3 $ genSquaretoothWave defaultSigAttr (addSignals (repeat $ pitchToFrequency 48) (gain 50 $ genSineWave defaultSigAttr (repeat $ pitchToFrequency 90)))
+--main = BS.putStr . serializeSignal $ applyEnvelope defaultSigAttr 1.0 0.01 0.01 $ gain 3 $ lowPassFilter defaultSigAttr (pitchToFrequency 60) $ addSignals (genSquareWave defaultSigAttr (repeat $ pitchToFrequency 48)) (genSawtoothWave defaultSigAttr (repeat $ pitchToFrequency 48))
+--main = BS.putStr . serializeSignal $ applyEnvelope defaultSigAttr 1.0 0.01 0.01 $ genSquaretoothWave defaultSigAttr (repeat $ pitchToFrequency 48)
 
 data SignalAttributes = SignalAttributes {
   sampleRate :: Float
@@ -47,6 +44,14 @@ wrap min max val =
   else
     val
 
+-- need convolve
+-- with that, echo is simple
+
+genRandomSignal :: Int -> Signal
+genRandomSignal seed = randoms $ mkStdGen seed
+
+-- There is an obvious refactor for these next functions
+
 genSineWave :: SignalAttributes -> Signal -> Signal
 genSineWave sa@(SignalAttributes sr) freq = inner 0 freq
             where inner phase (f:rest) = sin (phase * 2 * pi) : inner (wrap 0 1 (phase + f / sr)) rest
@@ -58,6 +63,25 @@ genTriangleWave sa@(SignalAttributes sr) freq = inner 0 freq
                                            | p < 0.25 -> p * 4
                                            | p < 0.75 -> 1 - ((p - 0.25) * 4)
                                            | otherwise -> (p-1) * 4
+
+genSquareWave :: SignalAttributes -> Signal -> Signal
+genSquareWave sa@(SignalAttributes sr) freq = inner 0 freq
+  where inner phase (f:rest) = waveform phase : inner (wrap 0 1 (phase + f / sr)) rest
+        waveform p = case () of _
+                                 | p < 0.5 -> 1
+                                 | otherwise -> -1
+
+genSawtoothWave :: SignalAttributes -> Signal -> Signal
+genSawtoothWave sa@(SignalAttributes sr) freq = inner 0 freq
+  where inner phase (f:rest) = waveform phase : inner (wrap 0 1 (phase + f / sr)) rest
+        waveform p = ((1 - p) - 0.5) * 2
+
+genSquaretoothWave :: SignalAttributes -> Signal -> Signal
+genSquaretoothWave sa@(SignalAttributes sr) freq = inner 0 freq
+  where inner phase (f:rest) = waveform phase : inner (wrap 0 1 (phase + f / sr)) rest
+        waveform p = case () of _
+                                 | p < 0.5 -> 1 - p
+                                 | otherwise -> p - 1.5
 
 genEnvelope :: SignalAttributes -> Float -> Float -> Float -> Signal
 genEnvelope sa@(SignalAttributes sr) len indur outdur = 0 : takeWhile (>0) (map (generateEnvelope sr len indur outdur) [1..])
@@ -82,6 +106,14 @@ multiplySignals one two = zipWith (*) one two
 
 appendSignals :: Signal -> Signal -> Signal
 appendSignals = (++)
+
+lowPassFilter :: SignalAttributes -> Float -> Signal -> Signal
+lowPassFilter sa@(SignalAttributes sr) cutoff input = 
+  let rc = 1 / (2 * pi * cutoff)
+      dt = 1 / sr
+      alpha = dt / (rc + dt)
+      f prev (sample:rest) = let s = (alpha * sample) + ((1-alpha) * prev) in s : f s rest in
+    f 0 input
 
 serializeSignal :: Signal -> BS.ByteString
 serializeSignal signal = BS.concat $ map (Binary.encode . (truncate :: Float -> Int32) . (*1.5e8)) signal
