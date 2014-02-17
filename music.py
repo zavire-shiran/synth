@@ -22,10 +22,34 @@ def null_signal():
     while True:
         yield 0.0
 
+def constant_signal(value):
+    while True:
+        yield value
+
+def segment_signal(sample_rate, points):
+    time = 0.0
+
+    if len(points) == 0:
+        yield 0
+        return
+
+    current = 0
+
+    while len(points) > 0:
+        until_next_point = points[0][0] - time
+        if until_next_point > 0:
+            current += (points[0][1] - current) / (until_next_point * sample_rate)
+        else:
+            current = points[0][1]
+        time += 1.0 / sample_rate
+        if time >= points[0][0]:
+            del points[0]
+        yield current
+
 class Oscillator(object):
     def __init__(self, sample_rate, frequency, func):
         self.sample_rate = sample_rate
-        self.frequency = float(frequency)
+        self.frequency = frequency
         self.func = func
         self.phase = 0.0
 
@@ -33,8 +57,9 @@ class Oscillator(object):
         return self
 
     def next(self):
+        frequency = self.frequency.next()
         sample = self.func(self.phase)
-        self.phase += self.frequency / self.sample_rate
+        self.phase += frequency / self.sample_rate
         if self.phase > 1.0:
             self.phase -= 1.0
         return sample
@@ -58,7 +83,7 @@ class Instrument(object):
             del self.playing_notes[0]
 
         while len(self.notes) > 0 and self.notes[0][0] <= self.time:
-            self.playing_notes.append((self.notes[0][1], self.func(*self.notes[0][2:])))
+            self.playing_notes.append((self.notes[0][1], self.func(*self.notes[0])))
             del self.notes[0]
 
         if len(self.notes) + len(self.playing_notes) == 0:
@@ -96,6 +121,10 @@ def add_signals(*signals):
             return
         yield sample
 
+def multiply_signals(signal1, signal2):
+    for s1, s2 in zip(signal1, signal2):
+        yield s1 * s2
+
 def s32outputfile(filename, signal_iter):
     f = file(filename, 'wb')
     for sample in signal_iter:
@@ -116,6 +145,17 @@ def gain(g, signal):
 def pitch2frequency(pitch):
     return 440 * (2 ** ((pitch - 69.0) / 12))
 
+def basic_envelope(sample_rate, length):
+    return segment_signal(sample_rate, [(0, 0.0),
+                                        (0.001, 1.0),
+                                        (length - 0.001, 1.0),
+                                        (length, 0.0)])
+
+def triangle_oscillator_instr_func(start, end, f):
+    osc = Oscillator(44100, constant_signal(pitch2frequency(f)), triangle_wave_func)
+    env = basic_envelope(44100, end - start)
+    return multiply_signals(osc, env)
+
 if __name__ == '__main__':
     notes = [[0, 0.5, 60],
              [0.5, 1, 62],
@@ -128,9 +168,19 @@ if __name__ == '__main__':
              [4, 5, 60],
              [4, 5, 64],
              [4, 5, 67],
-             [4, 5, 72]]
-    instr = Instrument(44100, notes, lambda f: Oscillator(44100, pitch2frequency(f), triangle_wave_func))
+             [4, 5, 72],
+             [5, 6, 60],
+             [5, 6, 65],
+             [5, 6, 69],
+             [5, 6, 72],
+             [6, 7, 62],
+             [6, 7, 67],
+             [6, 7, 71],
+             [7, 8, 64],
+             [7, 8, 67],
+             [7, 8, 72]]
+    instr = Instrument(44100, notes, triangle_oscillator_instr_func)
 #    signals = [truncate_signal(44100, 1, Oscillator(44100, pitch2frequency(60), square_wave_func)),
 #               delay_signal(44100, 1, truncate_signal(44100, 1, Oscillator(44100, pitch2frequency(64), square_wave_func))),
 #               delay_signal(44100, 2, truncate_signal(44100, 1, Oscillator(44100, pitch2frequency(67), square_wave_func)))]
-    s32outputfile('pysound.s32', gain(2**26, instr))
+    s32outputfile('pysound.s32', gain(2**27, instr))
