@@ -127,9 +127,17 @@ def multiply_signals(signal1, signal2):
 
 def s32outputfile(filename, signal_iter):
     f = file(filename, 'wb')
+    buf = ''
+    sample_num = 0
     for sample in signal_iter:
-        output = struct.pack('i', sample)
-        f.write(output)
+        sample_num += 1
+        buf += struct.pack('i', sample)
+        if len(buf) >= 1024:
+            f.write(buf)
+            buf = ''
+        if sample_num % 44100 == 0:
+            print '%i seconds' % (sample_num / 44100)
+    f.write(buf)
 
 def truncate_signal(sample_rate, seconds, signal):
     for i, sample in enumerate(signal):
@@ -155,6 +163,16 @@ def triangle_oscillator_instr_func(start, end, f):
     osc = Oscillator(44100, constant_signal(pitch2frequency(f)), triangle_wave_func)
     env = basic_envelope(44100, end - start)
     return multiply_signals(osc, env)
+
+def clip_signal(max_amplitude, signal):
+    for sample in signal:
+        if math.fabs(sample) > max_amplitude:
+            if sample > 0:
+                yield max_amplitude
+            else:
+                yield -max_amplitude
+        else:
+            yield sample
 
 if __name__ == '__main__':
     notes = [[0, 0.5, 60],
