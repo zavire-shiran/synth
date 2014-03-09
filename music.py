@@ -193,6 +193,8 @@ notes = {'C': 0,
          'Bb': 10,
          'B': 11}
 
+pitches = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
+
 def note2pitch(note):
     if len(note) == 2:
         octave = int(note[1])
@@ -202,28 +204,34 @@ def note2pitch(note):
         return octave*12 + notes[note[0:2]]
     raise Exception('Invalid note specification: ' + note)
 
+def pitch2note(pitch):
+    octave = pitch/12
+    n = pitches[pitch % 12]
+    return n + str(octave)
+    
+music_notes = [[0, 0.5, 'F#5'],
+               [0.5, 1, 'G#5'],
+               [1, 1.5, 'A#5'],
+               [1.5, 2, 'B5'],
+               [2, 2.5, 'C#6'],
+               [2.5, 3, 'D#6'],
+               [3, 3.5, 'F6'],
+               [3.5, 4, 'F#6'],
+               [4, 5, 'F#5'],
+               [4, 5, 'A#5'],
+               [4, 5, 'C#6'],
+               [4, 5, 'F#6'],
+               [5, 6, 'F#5'],
+               [5, 6, 'B5'],
+               [5, 6, 'D#6'],
+               [5, 6, 'F#6'],
+               [6, 7, 'G#5'],
+               [6, 7, 'C#6'],
+               [6, 7, 'F6'],
+               [7, 8, 'A#5'],
+               [7, 8, 'C#6'],
+               [7, 8, 'F#6']]
+
 if __name__ == '__main__':
-    music_notes = [[0, 0.5, 'F#5'],
-                   [0.5, 1, 'G#5'],
-                   [1, 1.5, 'A#5'],
-                   [1.5, 2, 'B5'],
-                   [2, 2.5, 'C#6'],
-                   [2.5, 3, 'D#6'],
-                   [3, 3.5, 'F6'],
-                   [3.5, 4, 'F#6'],
-                   [4, 5, 'C5'],
-                   [4, 5, 'E5'],
-                   [4, 5, 'G5'],
-                   [4, 5, 'C6'],
-                   [5, 6, 'C5'],
-                   [5, 6, 'F5'],
-                   [5, 6, 'A5'],
-                   [5, 6, 'C6'],
-                   [6, 7, 'D5'],
-                   [6, 7, 'G5'],
-                   [6, 7, 'B5'],
-                   [7, 8, 'E5'],
-                   [7, 8, 'G5'],
-                   [7, 8, 'C6']]
     instr = Instrument(44100, 1, music_notes, triangle_oscillator_instr_func)
     s32outputfile('pysound.s32', gain(2**27, instr))

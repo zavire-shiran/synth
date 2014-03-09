@@ -4,7 +4,7 @@ import math
 class Pattern(object):
     def __init__(self, sample_rate, tempo, patterns, instruments):
         self.sample_rate = sample_rate
-        self.tempo = tempo # in beats per second
+        self.tempo = float(tempo) # in beats per second
         self.patterns = patterns
         self.instruments = instruments
         self.time = 0.0
@@ -27,7 +27,6 @@ class Pattern(object):
             for pattern, instrument in zip(self.patterns, self.instruments):
                 if self.last_note_played < len(pattern) and pattern[self.last_note_played] != ' ':
                     self.playing_notes.append(instrument(self.sample_rate))
-            print self.time, len(self.playing_notes)
 
         i = 0
         sample = 0.0
@@ -42,8 +41,6 @@ class Pattern(object):
            len(self.playing_notes) == 0:
             raise StopIteration()
 
-        if sample > 4.0:
-            print 'out of range', self.time, sample
         return sample
 
 def bass(signal_rate):
