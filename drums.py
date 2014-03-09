@@ -1,7 +1,6 @@
 import music
 import math
 
-
 class Pattern(object):
     def __init__(self, sample_rate, tempo, patterns, instruments):
         self.sample_rate = sample_rate

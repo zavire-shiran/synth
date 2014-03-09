@@ -65,8 +65,9 @@ class Oscillator(object):
         return sample
 
 class Instrument(object):
-    def __init__(self, sample_rate, notes, func):
+    def __init__(self, sample_rate, tempo, notes, func):
         self.sample_rate = sample_rate
+        self.tempo = float(tempo)
         self.notes = sorted(notes)
         self.func = func
         self.time = 0.0
@@ -76,7 +77,7 @@ class Instrument(object):
         return self
 
     def next(self):
-        self.time += 1.0 / self.sample_rate
+        self.time += self.tempo / self.sample_rate
 
         self.playing_notes.sort()
         while len(self.playing_notes) and self.playing_notes[0][0] <= self.time:
@@ -160,7 +161,7 @@ def basic_envelope(sample_rate, length):
                                         (length, 0.0)])
 
 def triangle_oscillator_instr_func(start, end, f):
-    osc = Oscillator(44100, constant_signal(pitch2frequency(f)), triangle_wave_func)
+    osc = Oscillator(44100, constant_signal(pitch2frequency(note2pitch(f))), triangle_wave_func)
     env = basic_envelope(44100, end - start)
     return multiply_signals(osc, env)
 
@@ -174,31 +175,55 @@ def clip_signal(max_amplitude, signal):
         else:
             yield sample
 
+notes = {'C': 0,
+         'C#': 1,
+         'Db': 1,
+         'D': 2,
+         'D#': 3,
+         'Eb': 3,
+         'E': 4,
+         'F': 5,
+         'F#': 6,
+         'Gb': 6,
+         'G': 7,
+         'G#': 8,
+         'Ab': 8,
+         'A': 9,
+         'A#': 10,
+         'Bb': 10,
+         'B': 11}
+
+def note2pitch(note):
+    if len(note) == 2:
+        octave = int(note[1])
+        return octave*12 + notes[note[0]]
+    if len(note) >= 3:
+        octave = int(note[2:])
+        return octave*12 + notes[note[0:2]]
+    raise Exception('Invalid note specification: ' + note)
+
 if __name__ == '__main__':
-    notes = [[0, 0.5, 60],
-             [0.5, 1, 62],
-             [1, 1.5, 64],
-             [1.5, 2, 65],
-             [2, 2.5, 67],
-             [2.5, 3, 69],
-             [3, 3.5, 71],
-             [3.5, 4, 72],
-             [4, 5, 60],
-             [4, 5, 64],
-             [4, 5, 67],
-             [4, 5, 72],
-             [5, 6, 60],
-             [5, 6, 65],
-             [5, 6, 69],
-             [5, 6, 72],
-             [6, 7, 62],
-             [6, 7, 67],
-             [6, 7, 71],
-             [7, 8, 64],
-             [7, 8, 67],
-             [7, 8, 72]]
-    instr = Instrument(44100, notes, triangle_oscillator_instr_func)
-#    signals = [truncate_signal(44100, 1, Oscillator(44100, pitch2frequency(60), square_wave_func)),
-#               delay_signal(44100, 1, truncate_signal(44100, 1, Oscillator(44100, pitch2frequency(64), square_wave_func))),
-#               delay_signal(44100, 2, truncate_signal(44100, 1, Oscillator(44100, pitch2frequency(67), square_wave_func)))]
+    music_notes = [[0, 0.5, 'F#5'],
+                   [0.5, 1, 'G#5'],
+                   [1, 1.5, 'A#5'],
+                   [1.5, 2, 'B5'],
+                   [2, 2.5, 'C#6'],
+                   [2.5, 3, 'D#6'],
+                   [3, 3.5, 'F6'],
+                   [3.5, 4, 'F#6'],
+                   [4, 5, 'C5'],
+                   [4, 5, 'E5'],
+                   [4, 5, 'G5'],
+                   [4, 5, 'C6'],
+                   [5, 6, 'C5'],
+                   [5, 6, 'F5'],
+                   [5, 6, 'A5'],
+                   [5, 6, 'C6'],
+                   [6, 7, 'D5'],
+                   [6, 7, 'G5'],
+                   [6, 7, 'B5'],
+                   [7, 8, 'E5'],
+                   [7, 8, 'G5'],
+                   [7, 8, 'C6']]
+    instr = Instrument(44100, 1, music_notes, triangle_oscillator_instr_func)
     s32outputfile('pysound.s32', gain(2**27, instr))
