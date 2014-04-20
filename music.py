@@ -175,13 +175,16 @@ def clip_signal(max_amplitude, signal):
         else:
             yield sample
 
-notes = {'C': 0,
+notes = {'Cb': -1,
+         'C': 0,
          'C#': 1,
          'Db': 1,
          'D': 2,
          'D#': 3,
          'Eb': 3,
          'E': 4,
+         'E#':5,
+         'Fb': 4,
          'F': 5,
          'F#': 6,
          'Gb': 6,
@@ -191,7 +194,8 @@ notes = {'C': 0,
          'A': 9,
          'A#': 10,
          'Bb': 10,
-         'B': 11}
+         'B': 11,
+         'B#': 12}
 
 pitches = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 
