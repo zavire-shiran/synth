@@ -6,11 +6,59 @@ Tempo = 2.0
 Sample_Rate = 44100
 
 basspattern1 = '1   1   1   1   '
+notes = [(0, 0.3, 'C4'),
+         (0, 0.3, 'E5'),
+         (0, 0.3, 'G4'),
+         (0, 0.3, 'C6'),
+         (0.33, 0.63, 'C4'),
+         (0.33, 0.63, 'E5'),
+         (0.33, 0.63, 'G4'),
+         (0.33, 0.6, 'C6'),
+         (0.67, 0.95, 'C4'),
+         (0.67, 0.95, 'E5'),
+         (0.67, 0.95, 'G4'),
+         (0.67, 0.95, 'C6'),
+         (1, 1.3, 'F4'),
+         (1, 1.3, 'A4'),
+         (1, 1.3, 'F5'),
+         (1, 1.3, 'C6'),
+         (1.33, 1.63, 'F4'),
+         (1.33, 1.63, 'A4'),
+         (1.33, 1.63, 'F5'),
+         (1.33, 1.63, 'C6'),
+         (1.67, 1.97, 'F4'),
+         (1.67, 1.97, 'A4'),
+         (1.67, 1.97, 'F5'),
+         (1.67, 1.97, 'C6'),
+         (2, 2.3, 'G4'),
+         (2, 2.3, 'B4'),
+         (2, 2.3, 'D6'),
+         (2, 2.3, 'G5'),
+         (2.33, 2.63, 'G4'),
+         (2.33, 2.63, 'B4'),
+         (2.33, 2.63, 'D6'),
+         (2.33, 2.63, 'G5'),
+         (2.67, 2.97, 'G4'),
+         (2.67, 2.97, 'B4'),
+         (2.67, 2.97, 'D6'),
+         (2.67, 2.97, 'G5')]
 
-pattern1 = drums.Pattern(Sample_Rate, Tempo * 4, [basspattern1], [drums.bass])
-pattern2 = drums.Pattern(Sample_Rate, Tempo * 4, [basspattern1], [drums.bass])
+notes1 = [(0.0, 0.45, 'C4'),
+          (0.5, 0.95, 'C4'),
+          (1.0, 1.45, 'G4'),
+          (1.5, 1.95, 'C4'),
+          (2.0, 2.45, 'Ab4'),
+          (2.5, 2.95, 'C4'),
+          (3.0, 3.45, 'G4'),
+          (3.5, 3.95, 'C4'),
+          (4.0, 4.45, 'Ab4'),
+          (4.5, 4.95, 'Ab4')]
+
+pattern1 = (Sample_Rate, Tempo * 4, [basspattern1], [drums.bass])
+
 s = song.Song(Sample_Rate, Tempo,
-              [(0.0, pattern1),
-               (4.0, pattern2)])
+              [(0.0, drums.Pattern(*pattern1)),
+               (4.0, drums.Pattern(*pattern1)),
+               (0.0, music.Instrument(Sample_Rate, Tempo, notes1, music.triangle_oscillator_instr_func))])
 
 music.s32outputfile('pysound.s32', music.gain(2**27, s))
