@@ -6,6 +6,14 @@
 (define (sine-func phase)
   (sin (* 2 phase pi)))
 
+(define (square-func phase)
+  (if (> phase 0.5) 1.0 -1.0))
+
+(define (triangle-func phase)
+  (cond ((< phase 0.25) (* phase 4))
+        ((< phase 0.75) (- 1 (* 4 (- phase 0.25))))
+        (else (* 4 (- phase 1)))))
+
 (define (oscillator sample-rate frequency-signal func)
   (generator ()
              (let loop ((phase 0.0))
@@ -37,6 +45,6 @@
                (yield (exact-round (* gain s))))))
 
 (module+ main #f
-         (let* ((osc (oscillator 44100 (constant-signal 440) sine-func))
-                (s1 (float-signal-to-integer-signal (expt 2 27) osc)))
+         (let* ((osc (oscillator 44100 (constant-signal 440) triangle-func))
+                (s1 (float-signal-to-integer-signal (expt 2 28) osc)))
            (s32-file "music.s32" (signal-sample-take-num 44100 s1))))
