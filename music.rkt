@@ -2,6 +2,7 @@
 
 (require racket)
 (require racket/generator)
+(require (only-in srfi/1 zip))
 
 (define (sine-func phase)
   (sin (* 2 phase pi)))
@@ -26,6 +27,18 @@
                   (yield value)
                   (loop))))
 
+(define (add-signals . signals)
+  (generator () (let loop ((accum 0))
+                  (for ((signal signals))
+                    (set! accum (+ accum (signal))))
+                  (yield accum)
+                  (loop 0))))
+
+(define (gain-signal gain signal)
+  (generator () (for ((s (in-producer signal (void))))
+                  (yield s))))
+
+; TODO: make a buffer to encode into
 (define (s32-file filename signal)
   (with-output-to-file filename
     (thunk
@@ -41,10 +54,32 @@
 
 (define (float-signal-to-integer-signal gain signal)
   (generator ()
-             (for ((s (in-producer signal)))
+             (for ((s (in-producer signal (void))))
                (yield (exact-round (* gain s))))))
 
+(define (append-signals . signals)
+  (generator ()
+             (for* ((signal signals)
+                    (s (in-producer signal (void))))
+               (yield s))))
+
+(define (segment-signal sample-rate . points)
+  (let ((segment
+         (lambda (length start end)
+           (generator ()
+                      (for ((i (in-range length)))
+                        (yield (+ start (* (/ i length) (- end start)))))))))
+    (apply append-signals
+           (for/list ((start points)
+                      (end (cdr points)))
+             (match-let (((list start-time start-value) start)
+                         ((list end-time end-value) end))
+               (segment (* sample-rate (- end-time start-time)) start-value end-value))))))
+
 (module+ main #f
-         (let* ((osc (oscillator 44100 (constant-signal 440) triangle-func))
-                (s1 (float-signal-to-integer-signal (expt 2 28) osc)))
-           (s32-file "music.s32" (signal-sample-take-num 44100 s1))))
+         (s32-file "envelope.s32" (float-signal-to-integer-signal (expt 2 28) (segment-signal 44100 '(0 0) '(0.1 1) '(0.9 1) '(1.0 0)))))
+;         (let* ((osc (gain-signal 10 (oscillator 44100 (constant-signal 10) sine-func)))
+;                (osc2 (gain-signal 100 (oscillator 44100 (add-signals osc (constant-signal 55)) sine-func)))
+;                (osc3 (oscillator 44100 (add-signals osc2 (constant-signal 220)) sine-func))
+;                (s1 (float-signal-to-integer-signal (expt 2 28) osc3)))
+;           (s32-file "music.s32" (signal-sample-take-num 44100 s1))))
